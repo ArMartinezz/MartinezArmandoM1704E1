@@ -9,6 +9,8 @@ public class GameManager : MonoBehaviour
     private int[] startPos = new int[2];
     private int[] objectivePos = new int[2];
 
+    private int done = 0;
+
     // 
     private List<Token> openList = new List<Token>();
     private List<Token> closedList = new List<Token>();
@@ -36,9 +38,18 @@ public class GameManager : MonoBehaviour
         ShowMatrix();
 
         // 
-        currentToken = new Token(startPos, 0);
+        // 1
+        currentToken = new Token(startPos, objectivePos, 0);
         openList.Add(currentToken);
+
     }
+
+    private void Update() {
+        // 2
+        if (openList.Count > 0) CreatePath();
+        else if (done == 0) { Debug.Log("JODEEER"); done ++; }
+    }
+    
     private void InstantiateToken(GameObject token, int[] position)
     {
         Instantiate(token, Calculator.GetPositionFromMatrix(position),
@@ -68,64 +79,114 @@ public class GameManager : MonoBehaviour
         }
         Debug.Log(matrix);
     }
-    //EL VOSTRE EXERCICI COMENÇA AQUI
-    private void Update()
+    
+    private void CreatePath() 
     {
+            Debug.Log(currentToken.position[0] + " " + currentToken.position[1]);
+            // 3, 4
+            currentToken = FindLowestToken(openList);
+            // 5
+            if (FoundPath(currentToken)) return;
+            // 6
+            List<Token> succesorTokens = GetSuccesorTokens(currentToken);
+            // 7
+            foreach (Token token in succesorTokens) 
+            {
+                // 8
+                float currentSuccesorCost = currentToken.G() + Calculator.distance;
+                // 9
+                Debug.Log(openList);
+                if (openList.Find(t => t.position == token.position) != null)
+                {
+                    // 10
+                    if (token.G() <= currentSuccesorCost) { closedList.Add(currentToken); continue; }
+                }
+                // 11
+                else if (closedList.Find(t => t.position == token.position) != null) 
+                {
+                    // 12
+                    if (token.G() <= currentSuccesorCost) { closedList.Add(currentToken); continue; }
+                    // 13
+                    FromCloseToOpen(token);
+                }
+                // 14
+                else 
+                {
+                    // 15
+                    openList.Add(token);
+                    // 16
+                }
+                // 18
+                // 19
+                token.parent = currentToken;
+            }
+            // 20, 21
+            closedList.Add(currentToken);
 
-        if(!EvaluateWin())
-        {
-            // int[] currentToken = GetLowestInOpen();
-
-            // if (EvaluateWin()) break;
-
-            // Token[] possibleTokens = GetAllPossibleTokens();
-
-            // foreach (Token token in possibleTokens)
-            // {
-
-            //     int currentCost = currentToken.cost + CheckDistanceToObj(currentToken.position, objectivePos);
-
-            //     if (isInOpenList(token))
-            //     {
-            //         if (CheckDistanceToObj(token.position, objetivePos) <= currentCost) closedList.Add(currentToken);
-            //         else if (isInClosedList(token)) 
-            //         {
-            //             if (CheckDistanceToObj(token.position, objetivePos) <= currentCost) closedList.Add(currentToken);
-            //             closedList.Remove(token);
-            //             openList.Add(token);
-            //         }
-            //         else
-            //         {
-            //             openList.Add(token);
-            //             // 
-            //         }
-            //         // 
-            //         // 
-            //     }
-            //     // 
-            // }
-            // // 
-        }
     }
-    private bool EvaluateWin()
+
+    private Token FindLowestToken(List<Token> list) 
     {
-        return currentToken.position == objectivePos;
+        Token lowestToken = list[0];
+        foreach (Token token in list) 
+        {
+            Debug.Log($"{lowestToken.position[0]}, {lowestToken.position[1]} vs  {token.position[0]}, {token.position[1]}\n {lowestToken.F()} vs {token.F()}");
+            if (lowestToken.F() > token.F()) {lowestToken = token;} 
+        }
+
+        Debug.Log($"Está chiquito: {lowestToken.position[0]}, {lowestToken.position[1]}");
+
+        return lowestToken; 
+    }
+
+    private List<Token> GetSuccesorTokens(Token token)
+    {
+        List<Token> succesorTokens = new List<Token>();
+        // HAY QUE MEJORAR
+        succesorTokens.Add(new Token(new int[] {token.position[0] + 1, token.position[1]}, objectivePos, token.G() + Calculator.distance));
+        succesorTokens.Add(new Token(new int[] {token.position[0] - 1, token.position[1]}, objectivePos, token.G() + Calculator.distance));
+        succesorTokens.Add(new Token(new int[] {token.position[0], token.position[1] + 1}, objectivePos, token.G() + Calculator.distance));
+        succesorTokens.Add(new Token(new int[] {token.position[0], token.position[1] - 1}, objectivePos, token.G() + Calculator.distance));
+
+        return succesorTokens;
+    }
+
+    private bool FoundPath(Token token) { return token.position[0] == objectivePos[0] && token.position[1] == objectivePos[1]; }
+
+    private void FromCloseToOpen(Token token)
+    {
+        closedList.RemoveAt(closedList.IndexOf(token));
+        openList.Add(token);
+    }
+    
+    private void ShowList(List<Token> list) {
+        string debugString = "";
+        foreach (Token token in list) 
+        {
+            debugString += $"[{token.position[0]}, {token.position[1]}]: E = {token.H()}";
+        }
+        Debug.Log(debugString);
     }
 }
 
 class Token {
     public int[] position;
-    public float Distance(Token from) { return Calculator.CheckDistanceToObj(from.position, position)}
+    private int[] objectivePos;
+    private float cost;
 
-    public float Heuristic(int[] objectivePos) { return Calculator.CheckDistanceToObj(position, objectivePos);}
+    public Token parent;
 
-    public float Grade(int[] startPos) { return Calculator.CheckDistanceToObj(position, startPos);}
+    public float H() { return Calculator.CheckDistanceToObj(position, objectivePos); }
 
-    public float Fuck(int[] startPos, int[] objectivePos) { return Heuristic(objectivePos) + Grade(startPos); }
+    public float G() { return cost; }
 
-    public Token(int[] position, int cost)
+    public float F() { return H() + G(); }
+
+    public Token(int[] position, int[] objectivePos, float cost)
     {
         this.position = position;
+        this.objectivePos = objectivePos;
         this.cost = cost;
     }
+
 }
