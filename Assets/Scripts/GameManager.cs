@@ -46,7 +46,7 @@ public class GameManager : MonoBehaviour
 
     private void Update() {
         // 2
-        if (openList.Count > 0) CreatePath();
+        if (openList.Count > 0) {CreatePath();}
         else if (done == 0) { Debug.Log("JODEEER"); done ++; }
     }
     
@@ -95,19 +95,18 @@ public class GameManager : MonoBehaviour
                 // 8
                 float currentSuccesorCost = currentToken.G() + Calculator.distance;
                 // 9
-                Debug.Log(openList);
                 if (openList.Find(t => t.position == token.position) != null)
                 {
                     // 10
-                    if (token.G() <= currentSuccesorCost) { closedList.Add(currentToken); continue; }
+                    if (token.G() <= currentSuccesorCost) { ; continue; }
                 }
                 // 11
                 else if (closedList.Find(t => t.position == token.position) != null) 
                 {
                     // 12
-                    if (token.G() <= currentSuccesorCost) { closedList.Add(currentToken); continue; }
+                    if (token.G() <= currentSuccesorCost) { ; continue; }
                     // 13
-                    FromCloseToOpen(token);
+                    FromOpenToClose(token);
                 }
                 // 14
                 else 
@@ -130,12 +129,8 @@ public class GameManager : MonoBehaviour
         Token lowestToken = list[0];
         foreach (Token token in list) 
         {
-            Debug.Log($"{lowestToken.position[0]}, {lowestToken.position[1]} vs  {token.position[0]}, {token.position[1]}\n {lowestToken.F()} vs {token.F()}");
-            if (lowestToken.F() > token.F()) {lowestToken = token;} 
+            if (token.F() <= lowestToken.F()) {lowestToken = token;} 
         }
-
-        Debug.Log($"Está chiquito: {lowestToken.position[0]}, {lowestToken.position[1]}");
-
         return lowestToken; 
     }
 
@@ -151,12 +146,30 @@ public class GameManager : MonoBehaviour
         return succesorTokens;
     }
 
-    private bool FoundPath(Token token) { return token.position[0] == objectivePos[0] && token.position[1] == objectivePos[1]; }
+    private bool FoundPath(Token token) 
+    { 
+        bool isWin = token.position[0] == objectivePos[0] && token.position[1] == objectivePos[1];
+        Debug.Log(isWin ? "THE WAY: " + token.DebugParents() : $"Me están jodiendo {token.position[0]} {token.position[1]} {objectivePos[0]} {objectivePos[1]}\n {token.H()}");
+        if (isWin) 
+        {
+            List<Token> pathList = new List<Token>();
+            token.PaintPath(pathList);
+            foreach(Token t in pathList) InstantiateToken(token3, t.position);
+        }
+        return isWin; 
+    }
 
     private void FromCloseToOpen(Token token)
     {
         closedList.RemoveAt(closedList.IndexOf(token));
         openList.Add(token);
+    }
+
+    private void FromOpenToClose(Token token)
+    {
+        openList.RemoveAt(closedList.IndexOf(token));
+        closedList.Add(token);
+
     }
     
     private void ShowList(List<Token> list) {
@@ -181,6 +194,24 @@ class Token {
     public float G() { return cost; }
 
     public float F() { return H() + G(); }
+
+    public string DebugParents() {
+        string pos = $"{position[0]}, {position[1]} ";
+        if (parent != null) 
+        {
+            pos += parent.DebugParents();
+            return pos;
+        }
+        return pos;
+    }
+
+    public void PaintPath(List<Token> pathList) 
+    {
+        if (parent != null) {
+            parent.PaintPath(pathList);
+        }
+        pathList.Add(this);
+    }
 
     public Token(int[] position, int[] objectivePos, float cost)
     {
