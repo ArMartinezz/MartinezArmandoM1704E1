@@ -9,8 +9,6 @@ public class GameManager : MonoBehaviour
     private int[] startPos = new int[2];
     private int[] objectivePos = new int[2];
 
-    private int done = 0;
-
     // 
     private List<Token> openList = new List<Token>();
     private List<Token> closedList = new List<Token>();
@@ -46,8 +44,7 @@ public class GameManager : MonoBehaviour
 
     private void Update() {
         // 2
-        if (openList.Count > 0) {CreatePath();}
-        else if (done == 0) { Debug.Log("JODEEER"); done ++; }
+        if (!FoundPath(currentToken)) {CreatePath();}
     }
     
     private void InstantiateToken(GameObject token, int[] position)
@@ -82,44 +79,33 @@ public class GameManager : MonoBehaviour
     
     private void CreatePath() 
     {
+            // ShowList(openList);
+            ShowList(openList);
             Debug.Log(currentToken.position[0] + " " + currentToken.position[1]);
-            // 3, 4
             currentToken = FindLowestToken(openList);
-            // 5
+            // Tome de ejemplo un pseudocódigo, lo hice bastante rápido y luego me pasé HORAS debugando. Quien iba a decirme que "Take from OPEN list" significa que seleccionas Y TAMBIÉN BORRAS de la lista
+            openList.RemoveAt(openList.IndexOf(currentToken));
             if (FoundPath(currentToken)) return;
-            // 6
             List<Token> succesorTokens = GetSuccesorTokens(currentToken);
-            // 7
             foreach (Token token in succesorTokens) 
             {
-                // 8
                 float currentSuccesorCost = currentToken.G() + Calculator.distance;
-                // 9
-                if (openList.Find(t => t.position == token.position) != null)
+                if (isInList(token, openList))
                 {
-                    // 10
-                    if (token.G() <= currentSuccesorCost) { ; continue; }
+                    if (token.G() <= currentSuccesorCost) { closedList.Add(token); continue; }
                 }
-                // 11
-                else if (closedList.Find(t => t.position == token.position) != null) 
+                else if (isInList(token, closedList)) 
                 {
-                    // 12
-                    if (token.G() <= currentSuccesorCost) { ; continue; }
-                    // 13
-                    FromOpenToClose(token);
+                    if (token.G() <= currentSuccesorCost) { closedList.Add(token); continue; }
+                    FromCloseToOpen(token);
                 }
-                // 14
                 else 
                 {
-                    // 15
                     openList.Add(token);
-                    // 16
                 }
-                // 18
-                // 19
+
                 token.parent = currentToken;
             }
-            // 20, 21
             closedList.Add(currentToken);
 
     }
@@ -149,7 +135,6 @@ public class GameManager : MonoBehaviour
     private bool FoundPath(Token token) 
     { 
         bool isWin = token.position[0] == objectivePos[0] && token.position[1] == objectivePos[1];
-        Debug.Log(isWin ? "THE WAY: " + token.DebugParents() : $"Me están jodiendo {token.position[0]} {token.position[1]} {objectivePos[0]} {objectivePos[1]}\n {token.H()}");
         if (isWin) 
         {
             List<Token> pathList = new List<Token>();
@@ -179,6 +164,15 @@ public class GameManager : MonoBehaviour
             debugString += $"[{token.position[0]}, {token.position[1]}]: E = {token.H()}";
         }
         Debug.Log(debugString);
+    }
+
+    private bool isInList(Token token, List<Token> list)
+    {
+        foreach (Token t in list) 
+        {
+            if (t.position[0] == token.position[0] && t.position[1] == token.position[1]) return true;
+        }
+        return false;
     }
 }
 
